@@ -112,7 +112,7 @@ resource "aws_db_parameter_group" "mysql" {
   family      = "mysql8.4"
   parameter {
     name  = "require_secure_transport"
-    value = "ON"
+    value = "1"
   }
 }
 resource "aws_db_instance" "mysql" {

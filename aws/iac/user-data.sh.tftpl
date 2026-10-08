@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-dnf install -y docker python3 jq awscli2
+dnf install -y docker python3 jq awscli-2
+aws --version
 systemctl enable --now docker amazon-ssm-agent
 install -d -m 755 /usr/local/lib/docker/cli-plugins /etc/todo /opt/todo/releases /var/lib/todo/node-metrics
 
