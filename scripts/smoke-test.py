@@ -12,7 +12,9 @@ def request(path, method="GET", payload=None):
     with urlopen(Request(base + path, data=data, method=method,
                          headers={"Content-Type": "application/json"}), timeout=10) as response:
         content = response.read()
-        return json.loads(content) if content and response.headers.get_content_type() == "application/json" else content
+        content_type = response.headers.get_content_type()
+        is_json = content_type == "application/json" or content_type.endswith("+json")
+        return json.loads(content) if content and is_json else content
 
 
 assert b'<div id="root">' in request("/")
