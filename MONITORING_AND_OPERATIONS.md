@@ -1,6 +1,6 @@
 # Monitoring and operations
 
-The stack collects application/host/runtime metrics every 15 seconds and provisions the Grafana operations dashboard automatically. Prometheus evaluates the committed rules, Alertmanager groups/delivers notifications, and Grafana shows metrics and external alert state. Monitoring is part of the EC2 deployment; AWS provisioning and real alert delivery are deferred until the AWS setup is completed.
+The stack collects application/host/runtime metrics every 15 seconds and provisions the Grafana operations dashboard automatically. Prometheus evaluates the committed rules, Alertmanager groups/delivers notifications, and Grafana shows metrics and external alert state. Monitoring is running on the assessment EC2 instance; live scrape targets, probes, runtime metrics, dashboard access and alert-rule evaluation passed the [deployment verification](aws/DEPLOYMENT_VERIFICATION.md). External notification delivery remains disabled until an operations webhook is configured.
 
 ## Metrics and why they matter
 

@@ -1,6 +1,6 @@
 variable "region" {
   type    = string
-  default = "ap-south-1"
+  default = "us-east-1"
 }
 
 variable "name" {
@@ -12,12 +12,13 @@ variable "name" {
   }
 }
 
-variable "github_repository" {
-  type    = string
-  default = "Chandu378/TodoSummaryAssistant-DevOps"
+variable "github_oidc_subject_prefix" {
+  type        = string
+  default     = "repo:Chandu378@181852755/TodoSummaryAssistant-DevOps@1409724256"
+  description = "Exact repository subject prefix from GitHub's OIDC customization API; includes immutable IDs for newer repositories."
   validation {
-    condition     = can(regex("^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", var.github_repository))
-    error_message = "Use owner/repository."
+    condition     = can(regex("^repo:[A-Za-z0-9_.-]+(@[0-9]+)?/[A-Za-z0-9_.-]+(@[0-9]+)?$", var.github_oidc_subject_prefix))
+    error_message = "Provide the exact repo:owner/repository prefix, including @IDs when enabled; wildcards and branch/environment suffixes are not allowed."
   }
 }
 

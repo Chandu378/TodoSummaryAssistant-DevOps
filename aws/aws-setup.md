@@ -1,6 +1,6 @@
 # AWS setup: EC2, private RDS and automated releases
 
-These are provisioning instructions, not evidence of a live deployment. AWS setup is intentionally deferred for this submission. Once the one-time setup is complete, a successful `main` push builds, tests, publishes and deploys automatically.
+The assessment is provisioned in `us-east-1`, and GitHub delivery is enabled. See the [live deployment verification record](DEPLOYMENT_VERIFICATION.md) for tested behavior and remaining operational drills. These instructions reproduce the one-time setup; subsequent `main` pushes build, test, publish and deploy automatically.
 
 ## Network and security
 
@@ -21,7 +21,7 @@ The application has no authentication upstream. Restrict HTTP to your current pu
 
 The EC2 instance profile permits SSM agent operations, pulling only the two ECR repositories, reading release objects under the one S3 prefix, and retrieving only the two designated secrets. AWS-required authorization calls use wildcard resources; repository, object, secret and deploy-target operations are scoped. Instance metadata requires IMDSv2 with a hop limit of one. Host scripts use the role, while application containers receive only their application configuration.
 
-GitHub assumes a separate IAM role through OIDC, restricted to `repo:Chandu378/TodoSummaryAssistant-DevOps:ref:refs/heads/main` and the STS audience. The role can publish to the two ECR repositories, upload/read release objects, invoke only the custom deploy document on this instance and poll command results. It cannot retrieve database/application secrets or provision infrastructure. There are no long-lived AWS access keys in GitHub or the repository. Keep the deploy job free of a GitHub `environment:` field unless you also change the OIDC subject restriction for that environment.
+GitHub assumes a separate IAM role through OIDC, restricted to `repo:Chandu378@181852755/TodoSummaryAssistant-DevOps@1409724256:ref:refs/heads/main` and the STS audience. This repository uses GitHub's immutable owner/repository IDs in its subject. The role can publish to the two ECR repositories, upload/read release objects, invoke only the custom deploy document on this instance and poll command results. It cannot retrieve database/application secrets or provision infrastructure. There are no long-lived AWS access keys in GitHub or the repository. Keep the deploy job free of a GitHub `environment:` field unless you also change the OIDC subject restriction for that environment.
 
 Terraform manages the **metadata** of the application secret and the RDS-managed master secret, not their plaintext contents. Runtime scripts fetch the values into root-owned `deploy/runtime/` files, never print them, and preserve special characters using raw Compose env files. Monitoring only receives its own password/webhook files. Access to the Docker daemon and root remains privileged and must be restricted. Terraform state contains resource identifiers and must still be protected even though no managed password value is stored in it.
 
@@ -44,6 +44,14 @@ terraform output
 
 If your account already has the GitHub OIDC provider, set `existing_github_oidc_provider_arn` to reuse it. Commit the generated `.terraform.lock.hcl` when updating dependencies. Local state is ignored; for team use, configure an encrypted private S3 backend with state locking before applying. No CI job runs `terraform apply`.
 
+Before applying for a different repository, obtain its exact OIDC prefix and set `github_oidc_subject_prefix` in `terraform.tfvars`:
+
+```bash
+gh api repos/OWNER/REPOSITORY/actions/oidc/customization/sub --jq .sub_claim_prefix
+```
+
+Newer repositories include immutable IDs (`repo:OWNER@OWNER_ID/REPOSITORY@REPOSITORY_ID`). Legacy repositories use `repo:OWNER/REPOSITORY`. The trust policy appends `:ref:refs/heads/main` and uses exact equality. Do not remove the IDs or add wildcards to work around an authentication failure. See [GitHub's AWS OIDC guidance](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws).
+
 The latest Amazon Linux 2023 x86_64 AMI is resolved from the public AWS SSM parameter. User-data installs Docker, AWS CLI, Python and a fixed/checksummed Compose plugin. It writes `/etc/todo/config.json` containing non-secret resource references, installs the locked `/usr/local/bin/todo-release` launcher and enables `todo-metrics.timer`. The deployment document waits for cloud-init to finish before starting a release. Review bootstrap errors in `/var/log/cloud-init-output.log` through SSM if the first release fails.
 
 ## Populate the application secret
@@ -63,7 +71,7 @@ chmod 600 /private/tmp/todo-app-secret.json
 aws secretsmanager put-secret-value \
   --secret-id YOUR_APP_SECRET_ARN \
   --secret-string file:///private/tmp/todo-app-secret.json \
-  --region ap-south-1
+  --region us-east-1
 ```
 
 Do not put literal passwords or keys in command arguments/history. Use a dedicated channel/webhook for operational notifications if enabling them. The example JSON contains placeholders only; do not deploy those placeholders as real integration credentials. The managed RDS secret needs no manual password creation. Secret rotation requires a redeployment to refresh backend configuration; Grafana initializes its admin password only on its first database creation, so rotate an existing account through Grafana's account settings as well.
@@ -107,7 +115,7 @@ For Grafana, use a Session Manager tunnel (requires the AWS Session Manager plug
 aws ssm start-session --target YOUR_INSTANCE_ID \
   --document-name AWS-StartPortForwardingSession \
   --parameters '{"portNumber":["3001"],"localPortNumber":["3001"]}' \
-  --region ap-south-1
+  --region us-east-1
 ```
 
 Open `http://localhost:3001`. Use the same document with port 9090/9093 to inspect Prometheus/Alertmanager. Your operator IAM session needs Session Manager permissions; the CI role intentionally cannot open sessions.

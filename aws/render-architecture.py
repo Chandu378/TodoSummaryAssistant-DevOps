@@ -33,7 +33,7 @@ def arrow(start, end, label=None, position=None):
 
 
 draw.text((55, 32), 'Todo Summary Assistant | AWS delivery and operations', fill='#102641', font=font(38))
-draw.text((55, 84), 'Repository design — AWS provisioning deferred', fill='#54708f', font=font(22))
+draw.text((55, 84), 'EC2 + private RDS | OIDC delivery, health checks and monitoring', fill='#54708f', font=font(22))
 box((55, 150, 425, 325), 'GitHub Actions', ['Java + React tests', 'Docker/MySQL smoke checks', 'Full SHA release tags'])
 box((500, 150, 875, 325), 'IAM delivery role / OIDC', ['Trust only this repo + main', 'Scoped ECR, S3 and SSM', 'No stored AWS access keys'], '#e8f0ff')
 box((950, 150, 1310, 325), 'ECR + private S3', ['Immutable application images', 'Versioned config + checksum', 'Retained rollback releases'], '#e8f0ff')

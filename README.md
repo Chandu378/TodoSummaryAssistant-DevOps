@@ -4,7 +4,9 @@
 
 The original [Todo Summary Assistant](https://github.com/Praj122/TodoSummaryAssistant) is a Spring Boot/React application that manages todos, summarizes pending tasks using Cohere, and posts the summary to Slack. This repository adds Docker delivery, AWS infrastructure, monitoring and recovery procedures while preserving its CRUD and summary business logic.
 
-**Submission status:** repository implementation is ready for AWS provisioning. AWS resources have not been created and the AWS publish/deploy job is disabled until `AWS_DEPLOY_ENABLED=true` is configured. Application tests, static checks and the Docker/MySQL smoke tests run without an AWS account. CI validates containers; an actual EC2/RDS deployment must be verified after provisioning. This is a single-instance assessment deployment, with the availability limitations described below.
+**Submission status:** deployed and verified on AWS EC2 with private RDS in `us-east-1`. GitHub builds, tests, publishes SHA-tagged images to ECR and deploys through SSM. Live frontend readiness, RDS-backed CRUD, Prometheus targets, runtime metrics, Grafana provisioning and alert-rule evaluation passed. See the [deployment verification record](aws/DEPLOYMENT_VERIFICATION.md) for evidence and test scope. Cohere/Slack credentials and external alert delivery remain pending. This is a single-instance assessment deployment, with the availability limitations described below.
+
+The [live application](http://184.196.22.243) is accessible only from the configured operator/reviewer public IP range. Use the explicit `http://` URL; HTTPS is not configured for this restricted assessment endpoint.
 
 ## Project and runtime
 
