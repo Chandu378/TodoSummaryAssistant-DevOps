@@ -1,0 +1,55 @@
+groups:
+  - name: todo-service
+    rules:
+      - alert: ApplicationDown
+        expr: up{job="backend"} == 0 or absent(up{job="backend"}) or probe_success{job="blackbox"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: "Todo application unavailable: {{ $labels.instance }}"
+          description: "Check readiness, container logs and RDS. See FAILURE_AND_ROLLBACK.md."
+      - alert: HighErrorRate
+        expr: |
+          (sum(rate(http_server_requests_seconds_count{job="backend",uri=~"/api/.*",status=~"5.."}[5m]))
+          / clamp_min(sum(rate(http_server_requests_seconds_count{job="backend",uri=~"/api/.*"}[5m])), 0.001) > 0.05)
+          and sum(increase(http_server_requests_seconds_count{job="backend",uri=~"/api/.*"}[5m])) > 100
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: "More than 5% of API requests fail"
+          description: "Sustained 5xx with over 100 requests in 5 minutes; inspect logs and dependencies."
+      - alert: HighCPU
+        expr: 100 * (1 - avg by(instance) (rate(node_cpu_seconds_total{job="node",mode="idle"}[5m]))) > 85
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "Host CPU exceeds 85%: {{ $labels.instance }}"
+          description: "Inspect container load, JVM and EC2 CPU credits before resizing."
+      - alert: LowDiskSpace
+        expr: node_filesystem_avail_bytes{job="node",mountpoint="/",fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{job="node",mountpoint="/",fstype!~"tmpfs|overlay"} < 0.15
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "Root filesystem has less than 15% free space"
+          description: "Check Docker logs/images and Prometheus retention; preserve rollback images."
+      - alert: ContainerRestartLoop
+        expr: sum by(service) (increase(todo_container_restarts_total{service=~"backend|frontend"}[15m])) > 3
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: "Repeated container restarts: {{ $labels.service }}"
+          description: "Check OOM, exit code and release status; consider rollback."
+      - alert: ContainerMetricsStale
+        expr: time() - todo_container_metrics_collected_seconds > 120 or absent(todo_container_metrics_collected_seconds)
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "Docker runtime metrics collector stopped"
+          description: "Check todo-metrics.timer on EC2; local runs require scripts/container-metrics.py."
+      - alert: HostMetricsDown
+        expr: up{job="node"} == 0 or absent(up{job="node"})
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "Host metrics are unavailable"
+          description: "Check Node Exporter and Prometheus target discovery."

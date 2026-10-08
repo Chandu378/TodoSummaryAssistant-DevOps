@@ -1,0 +1,10 @@
+[Unit]
+Description=Export Todo Docker runtime metrics
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/todo/current/scripts/container-metrics.py
+User=root
+UMask=0022

@@ -1,0 +1,53 @@
+rule_files:
+  - alert-rules.yml
+evaluation_interval: 1m
+tests:
+  - name: Application down pages after two minutes
+    interval: 1m
+    input_series:
+      - series: 'up{job="backend",instance="backend:8081"}'
+        values: '0x10'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: ApplicationDown
+        exp_alerts:
+          - exp_labels: {job: backend, instance: 'backend:8081', severity: critical}
+            exp_annotations:
+              summary: 'Todo application unavailable: backend:8081'
+              description: 'Check readiness, container logs and RDS. See FAILURE_AND_ROLLBACK.md.'
+  - name: CPU saturation must persist ten minutes
+    interval: 1m
+    input_series:
+      - series: 'node_cpu_seconds_total{job="node",instance="node-exporter:9100",cpu="0",mode="idle"}'
+        values: '0+0x20'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: HighCPU
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: HighCPU
+        exp_alerts:
+          - exp_labels: {instance: 'node-exporter:9100', severity: warning}
+            exp_annotations:
+              summary: 'Host CPU exceeds 85%: node-exporter:9100'
+              description: 'Inspect container load, JVM and EC2 CPU credits before resizing.'
+  - name: Healthy service does not page
+    interval: 1m
+    input_series:
+      - series: 'up{job="backend",instance="backend:8081"}'
+        values: '1x10'
+      - series: 'probe_success{job="blackbox",instance="http://backend:8080/readyz"}'
+        values: '1x10'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: ApplicationDown
+        exp_alerts: []
+  - name: Single low-volume failure should not page
+    interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{job="backend",uri="/api/todos",status="500"}'
+        values: '0+1x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: HighErrorRate
+        exp_alerts: []

@@ -1,0 +1,10 @@
+[Unit]
+Description=Collect Todo container restart and uptime metrics
+
+[Timer]
+OnBootSec=60
+OnUnitActiveSec=15
+Unit=todo-metrics.service
+
+[Install]
+WantedBy=timers.target

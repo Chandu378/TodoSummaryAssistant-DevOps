@@ -1,0 +1,38 @@
+flowchart TB
+    GitHub[GitHub Actions: validate and smoke test] -->|OIDC: repository main branch only| DeliveryRole[IAM delivery role]
+    DeliveryRole -->|SHA tags| ECR[ECR immutable backend/frontend images]
+    DeliveryRole -->|SHA bundle and checksum| S3[Private versioned S3 releases]
+    DeliveryRole -->|Custom deploy document| SSM[SSM Run Command]
+    subgraph VPC[Dedicated VPC]
+        subgraph Public[Public subnet]
+            subgraph EC2[EC2: IMDSv2 and instance role]
+                Launcher[Locked release launcher with health gates and rollback]
+                Nginx[Non-root Nginx / React]
+                Backend[Non-root Spring Boot]
+                Prometheus[Prometheus]
+                Grafana[Grafana]
+                Exporters[Node and Blackbox exporters]
+                Collector[Host Docker textfile collector]
+                Alerts[Alertmanager]
+            end
+        end
+        subgraph Private[Two isolated database subnets / two AZs]
+            RDS[Private RDS MySQL: encryption and backups]
+        end
+    end
+    Reviewer[Reviewer CIDR] -->|HTTP 80| Nginx
+    Nginx -->|API and readiness| Backend
+    Backend -->|3306 TLS: EC2 SG only| RDS
+    SSM --> Launcher
+    Launcher --> ECR
+    Launcher --> S3
+    Launcher --> Secrets[Secrets Manager: RDS and application]
+    Launcher --> Nginx
+    Launcher --> Backend
+    Prometheus -->|Internal management 8081| Backend
+    Prometheus --> Exporters
+    Collector -->|Restart and uptime textfile| Exporters
+    Grafana --> Prometheus
+    Prometheus --> Alerts
+    Alerts -.->|Optional secret-file webhook| Slack[Operations Slack]
+    Operator[Authorized operator] -->|SSM port forwarding| Grafana

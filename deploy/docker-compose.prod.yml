@@ -1,0 +1,125 @@
+# Production uses RDS; no MySQL container or public monitoring ports.
+name: todo
+services:
+  backend:
+    restart: unless-stopped
+    logging: &id001
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+    cap_drop: &id002
+    - ALL
+    security_opt: &id003
+    - no-new-privileges:true
+    image: ${ECR_REGISTRY:?}/${BACKEND_REPOSITORY:?}:${RELEASE_SHA:?}
+    read_only: true
+    tmpfs:
+    - /tmp:size=128m
+    - mode=1777
+    mem_limit: 640m
+    stop_grace_period: 30s
+    env_file:
+    - path: ./runtime/backend.env
+      format: raw
+  frontend:
+    restart: unless-stopped
+    logging: *id001
+    cap_drop: *id002
+    security_opt: *id003
+    image: ${ECR_REGISTRY:?}/${FRONTEND_REPOSITORY:?}:${RELEASE_SHA:?}
+    ports:
+    - 80:8080
+    depends_on:
+      backend:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+    - /tmp:size=32m
+    - mode=1777
+    mem_limit: 64m
+  prometheus:
+    restart: unless-stopped
+    logging: *id001
+    cap_drop: *id002
+    security_opt: *id003
+    image: prom/prometheus:v3.5.0
+    command:
+    - --config.file=/etc/prometheus/prometheus.yml
+    - --storage.tsdb.path=/prometheus
+    - --storage.tsdb.retention.time=7d
+    - --storage.tsdb.retention.size=2GB
+    volumes:
+    - ../monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    - ../monitoring/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
+    - prometheus-data:/prometheus
+    ports:
+    - 127.0.0.1:9090:9090
+    mem_limit: 256m
+  grafana:
+    restart: unless-stopped
+    logging: *id001
+    cap_drop: *id002
+    security_opt: *id003
+    image: grafana/grafana:12.2.0
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+      GF_AUTH_ANONYMOUS_ENABLED: 'false'
+      GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana-password
+    volumes:
+    - grafana-data:/var/lib/grafana
+    - ../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    - ../monitoring/grafana-dashboard.json:/var/lib/grafana/dashboards/todo.json:ro
+    - ./runtime/grafana-password:/run/secrets/grafana-password:ro
+    ports:
+    - 127.0.0.1:3001:3000
+    mem_limit: 256m
+  node-exporter:
+    restart: unless-stopped
+    logging: *id001
+    cap_drop: *id002
+    security_opt: *id003
+    image: prom/node-exporter:v1.9.1
+    pid: host
+    command:
+    - --path.rootfs=/host
+    - --path.procfs=/host/proc
+    - --path.sysfs=/host/sys
+    - --collector.textfile.directory=/textfile
+    - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+|var/lib/containerd/.+)($$|/)
+    volumes:
+    - /:/host:ro,rslave
+    - /var/lib/todo/node-metrics:/textfile:ro
+    mem_limit: 32m
+  blackbox:
+    restart: unless-stopped
+    logging: *id001
+    cap_drop: *id002
+    security_opt: *id003
+    image: prom/blackbox-exporter:v0.27.0
+    command:
+    - --config.file=/etc/blackbox/blackbox.yml
+    volumes:
+    - ../monitoring/blackbox.yml:/etc/blackbox/blackbox.yml:ro
+    mem_limit: 32m
+  alertmanager:
+    restart: unless-stopped
+    logging: *id001
+    cap_drop: *id002
+    security_opt: *id003
+    image: prom/alertmanager:v0.28.1
+    command:
+    - --config.file=/etc/alertmanager/alertmanager.yml
+    - --storage.path=/alertmanager
+    volumes:
+    - ./runtime/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    - alertmanager-data:/alertmanager
+    - ./runtime/alert-webhook:/run/secrets/alert-webhook:ro
+    ports:
+    - 127.0.0.1:9093:9093
+    mem_limit: 64m
+volumes:
+  prometheus-data: null
+  grafana-data: null
+  alertmanager-data: null

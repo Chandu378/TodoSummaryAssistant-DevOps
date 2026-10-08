@@ -1,0 +1,14 @@
+# Local alerts remain visible in Grafana/Alertmanager without sending messages.
+# Production replaces this file with a secret-file Slack receiver at deploy time.
+route:
+  receiver: local
+  group_by: [alertname, instance]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+receivers:
+  - name: local
+inhibit_rules:
+  - source_matchers: ['alertname="ApplicationDown"']
+    target_matchers: ['alertname="HighErrorRate"']
+    equal: [project]

@@ -12,6 +12,8 @@ function App() {
 
   useEffect(() => {
     fetchTodos();
+    // Keep the existing one-time initial fetch when building with strict CI lint.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchTodos = async () => {

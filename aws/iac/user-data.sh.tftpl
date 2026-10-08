@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+dnf install -y docker python3 jq awscli2
+systemctl enable --now docker amazon-ssm-agent
+install -d -m 755 /usr/local/lib/docker/cli-plugins /etc/todo /opt/todo/releases /var/lib/todo/node-metrics
+
+# Download a fixed Compose release and verify the published checksum.
+compose_version=v2.39.4
+compose_asset=docker-compose-linux-x86_64
+compose_directory=$(mktemp -d)
+curl --fail --location --retry 3 "https://github.com/docker/compose/releases/download/$compose_version/$compose_asset" -o "$compose_directory/$compose_asset"
+curl --fail --location --retry 3 "https://github.com/docker/compose/releases/download/$compose_version/$compose_asset.sha256" -o "$compose_directory/$compose_asset.sha256"
+(cd "$compose_directory" && sha256sum -c "$compose_asset.sha256")
+install -m 755 "$compose_directory/$compose_asset" /usr/local/lib/docker/cli-plugins/docker-compose
+docker compose version
+
+cat > /etc/todo/config.json <<'TODO_CONFIG'
+${runtime_config}
+TODO_CONFIG
+chmod 600 /etc/todo/config.json
+cat > /usr/local/bin/todo-release <<'TODO_LAUNCHER'
+${launcher}
+TODO_LAUNCHER
+chmod 700 /usr/local/bin/todo-release
+cat > /etc/systemd/system/todo-metrics.service <<'TODO_UNIT'
+${metrics_unit}
+TODO_UNIT
+cat > /etc/systemd/system/todo-metrics.timer <<'TODO_TIMER'
+${metrics_timer}
+TODO_TIMER
+systemctl daemon-reload
+systemctl enable --now todo-metrics.timer
