@@ -3,6 +3,7 @@
 import argparse
 from datetime import datetime
 import json
+import re
 from pathlib import Path
 import subprocess
 import time
@@ -20,7 +21,8 @@ def metrics(containers):
         started = state["StartedAt"]
         if not started.startswith("0001"):
             # Docker has nanoseconds; truncate to Python's supported microseconds.
-            stamp = datetime.fromisoformat(started.replace("Z", "+00:00")).timestamp()
+            normalized = re.sub(r"(\.\d{6})\d+", r"\1", started.replace("Z", "+00:00"))
+            stamp = datetime.fromisoformat(normalized).timestamp()
             lines.append(f"todo_container_start_time_seconds{{{labels}}} {stamp}")
         lines.append(f'todo_container_restarts_total{{{labels}}} {container["RestartCount"]}')
         lines.append(f'todo_container_running{{{labels}}} {int(state["Running"])}')

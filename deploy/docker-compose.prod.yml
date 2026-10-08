@@ -15,8 +15,7 @@ services:
     image: ${ECR_REGISTRY:?}/${BACKEND_REPOSITORY:?}:${RELEASE_SHA:?}
     read_only: true
     tmpfs:
-    - /tmp:size=128m
-    - mode=1777
+    - /tmp:size=128m,mode=1777
     mem_limit: 640m
     stop_grace_period: 30s
     env_file:
@@ -35,8 +34,7 @@ services:
         condition: service_healthy
     read_only: true
     tmpfs:
-    - /tmp:size=32m
-    - mode=1777
+    - /tmp:size=32m,mode=1777
     mem_limit: 64m
   prometheus:
     restart: unless-stopped
