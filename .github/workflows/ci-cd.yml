@@ -68,6 +68,8 @@ jobs:
           docker run --rm --entrypoint /bin/promtool -v "$PWD/monitoring:/etc/prometheus:ro" prom/prometheus:v3.5.0 check config /etc/prometheus/prometheus.yml
           docker run --rm --entrypoint /bin/promtool -v "$PWD/monitoring:/etc/prometheus:ro" prom/prometheus:v3.5.0 test rules /etc/prometheus/alert-tests.yml
           docker run --rm --entrypoint /bin/amtool -v "$PWD/monitoring:/etc/alertmanager:ro" prom/alertmanager:v0.28.1 check-config /etc/alertmanager/alertmanager.yml
+      - name: Validate production Compose and exact secret handling
+        run: python3 scripts/check-production-compose.py
       - name: Build both images and run local MySQL stack
         run: |
           cp .env.example .env
@@ -75,6 +77,8 @@ jobs:
           docker compose up -d --build --wait --wait-timeout 300
       - name: Test frontend proxy and MySQL CRUD
         run: python3 scripts/smoke-test.py
+      - name: Verify exact production secrets inside a non-root container
+        run: python3 scripts/check-production-compose.py --runtime
       - name: Verify app containers run as non-root
         run: |
           test "$(docker compose exec -T backend id -u)" != 0

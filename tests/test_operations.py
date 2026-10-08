@@ -76,6 +76,7 @@ else:
     print('unused-login-token')
 ''')
         self.program('docker', '''import os,sys
+if 'login' in sys.argv: sys.stdin.read()
 args=' '.join(sys.argv[1:])
 with open(os.environ['TEST_LOG'],'a') as log: log.write(args+'\\n')
 if os.environ.get('FAIL_ACTION','') and os.environ['FAIL_ACTION'] in args and 'b'*40 in args: sys.exit(1)
